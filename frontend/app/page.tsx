@@ -132,7 +132,7 @@ export default function Home() {
               href="/signup"
               className="group px-8 py-4 rounded-xl border border-white/60 hover:bg-white/10 hover:-translate-y-1 transition"
             >
-              Create Free Account{" "}
+              Create  Account{" "}
               <span className="inline-block transition group-hover:translate-x-1">→</span>
             </Link>
           </div>
