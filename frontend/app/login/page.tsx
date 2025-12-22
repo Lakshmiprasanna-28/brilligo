@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -18,9 +18,9 @@ type LoginForm = {
 export default function LoginPage() {
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<LoginForm>();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [tokenData, setTokenData] = useState<{ token: string; user: string } | null>(null);
 
   // Load remembered email
   useEffect(() => {
@@ -29,15 +29,21 @@ export default function LoginPage() {
       setValue("email", rememberedEmail);
       setValue("remember", true);
     }
+
+    // Handle OAuth tokens (CSR-only)
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const userParam = params.get("user");
+    if (token && userParam) {
+      setTokenData({ token, user: userParam });
+    }
   }, [setValue]);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const userParam = searchParams.get("user");
-    if (token && userParam) {
+    if (tokenData) {
       try {
-        const user = JSON.parse(decodeURIComponent(userParam));
-        localStorage.setItem("token", token);
+        const user = JSON.parse(decodeURIComponent(tokenData.user));
+        localStorage.setItem("token", tokenData.token);
         localStorage.setItem("user", JSON.stringify(user));
         toast.success("✅ OAuth login successful!");
         router.replace("/");
@@ -45,7 +51,7 @@ export default function LoginPage() {
         toast.error("OAuth login failed");
       }
     }
-  }, [searchParams, router]);
+  }, [tokenData, router]);
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
@@ -101,9 +107,7 @@ export default function LoginPage() {
               required: "Email is required",
               pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email address" },
             })}
-            className={`w-full px-4 py-3 rounded-xl border ${
-              errors.email ? "border-red-500" : "border-slate-300"
-            } bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500`}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.email ? "border-red-500" : "border-slate-300"} bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500`}
           />
           <p className="text-red-500 text-sm">{errors.email?.message}</p>
         </div>
@@ -117,14 +121,9 @@ export default function LoginPage() {
               required: "Password is required",
               minLength: { value: 8, message: "Min 8 characters" },
             })}
-            className={`w-full px-4 py-3 rounded-xl border ${
-              errors.password ? "border-red-500" : "border-slate-300"
-            } bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.password ? "border-red-500" : "border-slate-300"} bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
           />
-          <span
-            className="absolute right-3 top-3 cursor-pointer text-slate-400"
-            onClick={() => setShowPassword(!showPassword)}
-          >
+          <span className="absolute right-3 top-3 cursor-pointer text-slate-400" onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
           <p className="text-red-500 text-sm">{errors.password?.message}</p>

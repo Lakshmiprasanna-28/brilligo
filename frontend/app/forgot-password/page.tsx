@@ -5,18 +5,24 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!email) return;
     setLoading(true);
+
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`, { email });
       toast.success("✅ Password reset link sent to your email!");
       setEmail("");
-    } catch {
-      toast.error("Failed to send reset link");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Failed to send reset link");
+      } else {
+        toast.error("Failed to send reset link");
+      }
     } finally {
       setLoading(false);
     }
@@ -49,12 +55,14 @@ export default function ForgotPasswordPage() {
 
         {/* Submit Button */}
         <button
+          type="submit"
           disabled={loading || !email}
           className="w-full py-3 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg hover:opacity-90 transition"
         >
           {loading ? "Sending..." : "Send Reset Link"}
         </button>
 
+        {/* Login Link */}
         <p className="text-center text-sm text-slate-600">
           Remembered your password?{" "}
           <a href="/login" className="text-blue-600 font-medium hover:underline">

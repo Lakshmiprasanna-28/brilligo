@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -19,10 +19,10 @@ type SignupForm = {
 export default function SignupPage() {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<SignupForm>();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [tokenData, setTokenData] = useState<{ token: string; user: string } | null>(null);
   const password = watch("password");
 
   // Load remembered email
@@ -32,16 +32,21 @@ export default function SignupPage() {
       setValue("email", rememberedEmail);
       setValue("remember", true);
     }
+
+    // OAuth tokens (CSR-only)
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const userParam = params.get("user");
+    if (token && userParam) {
+      setTokenData({ token, user: userParam });
+    }
   }, [setValue]);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const userParam = searchParams.get("user");
-
-    if (token && userParam) {
+    if (tokenData) {
       try {
-        const user = JSON.parse(decodeURIComponent(userParam));
-        localStorage.setItem("token", token);
+        const user = JSON.parse(decodeURIComponent(tokenData.user));
+        localStorage.setItem("token", tokenData.token);
         localStorage.setItem("user", JSON.stringify(user));
         toast.success("✅ OAuth signup successful!");
         router.replace("/");
@@ -49,7 +54,7 @@ export default function SignupPage() {
         toast.error("OAuth signup failed");
       }
     }
-  }, [searchParams, router]);
+  }, [tokenData, router]);
 
   const onSubmit = async (data: SignupForm) => {
     setLoading(true);
@@ -63,7 +68,6 @@ export default function SignupPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      // Remember me functionality
       if (data.remember) {
         localStorage.setItem("rememberedEmail", data.email);
       } else {
@@ -119,9 +123,7 @@ export default function SignupPage() {
               required: "Email is required",
               pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email address" },
             })}
-            className={`w-full px-4 py-3 rounded-xl border ${
-              errors.email ? "border-red-500" : "border-slate-300"
-            } bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500`}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.email ? "border-red-500" : "border-slate-300"} bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500`}
           />
           <p className="text-red-500 text-sm">{errors.email?.message}</p>
         </div>
@@ -136,24 +138,13 @@ export default function SignupPage() {
               required: "Password is required",
               minLength: { value: 8, message: "Min 8 characters" },
             })}
-            className={`w-full px-4 py-3 rounded-xl border ${
-              errors.password ? "border-red-500" : "border-slate-300"
-            } bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.password ? "border-red-500" : "border-slate-300"} bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
           />
-          <span
-            className="absolute right-3 top-3 cursor-pointer text-slate-400"
-            onClick={() => setShowPassword(!showPassword)}
-          >
+          <span className="absolute right-3 top-3 cursor-pointer text-slate-400" onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
           {password && (
-            <p className={`text-sm mt-1 ${
-              getPasswordStrength(password) === "Weak"
-                ? "text-red-500"
-                : getPasswordStrength(password) === "Medium"
-                ? "text-yellow-500"
-                : "text-green-500"
-            }`}>
+            <p className={`text-sm mt-1 ${getPasswordStrength(password) === "Weak" ? "text-red-500" : getPasswordStrength(password) === "Medium" ? "text-yellow-500" : "text-green-500"}`}>
               Strength: {getPasswordStrength(password)}
             </p>
           )}
@@ -170,14 +161,9 @@ export default function SignupPage() {
               required: "Confirm Password is required",
               validate: (value) => value === password || "Passwords do not match",
             })}
-            className={`w-full px-4 py-3 rounded-xl border ${
-              errors.confirmPassword ? "border-red-500" : "border-slate-300"
-            } bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.confirmPassword ? "border-red-500" : "border-slate-300"} bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 pr-10`}
           />
-          <span
-            className="absolute right-3 top-3 cursor-pointer text-slate-400"
-            onClick={() => setShowConfirm(!showConfirm)}
-          >
+          <span className="absolute right-3 top-3 cursor-pointer text-slate-400" onClick={() => setShowConfirm(!showConfirm)}>
             {showConfirm ? <FaEyeSlash /> : <FaEye />}
           </span>
           <p className="text-red-500 text-sm">{errors.confirmPassword?.message}</p>
@@ -210,7 +196,6 @@ export default function SignupPage() {
           <a href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`} className="flex items-center justify-center w-12 h-12 border rounded-full hover:bg-slate-100 transition" title="Sign up with Google">
             <FcGoogle size={28} />
           </a>
-
           <a href={`${process.env.NEXT_PUBLIC_API_URL}/auth/github`} className="flex items-center justify-center w-12 h-12 border rounded-full hover:bg-slate-100 transition" title="Sign up with GitHub">
             <FaGithub size={28} className="text-black" />
           </a>
